@@ -52,7 +52,6 @@ while True:
                                        "(id integer PRIMARY KEY, data INTEGER, "
                                        "otwarcie REAL, max REAL, min REAL, "
                                        "TKO REAL, wolumen INTEGER);")
-            print(sql_stworz_tabele_dzien)
             if baza is not None:
                 create_table(baza, sql_stworz_tabele_dzien)
             else:
