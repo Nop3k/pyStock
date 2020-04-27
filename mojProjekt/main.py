@@ -1,100 +1,116 @@
 import sqlite3
+import sys
 from urllib.request import urlopen
 from pathlib import Path
 from sqlite3 import Error
+import matplotlib.pyplot as plt
+import os
+from datetime import date
 
 
-# funkcja utworz plik DB (jesli nie ma) lub polaczenie (jesli jest plik)
-def polacz_bd(db_file):
-    """ create a database connection to a SQLite database """
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-        print('Wersja utworzonej bazy SQLite3: ' + sqlite3.version)
-        return conn
-    except Error as e:
-        print(e)
-        return conn
+class MySqliteDb:
+    def __init__(self):
+        try:
+            self._db_connection = sqlite3.connect(
+                str(Path().absolute()) + r"\DB\pyGieldaDB.db")
+            self._db_cursor = self._db_connection.cursor()
+        except Exception as error:
+            print(error)
+        else:
+            print('Wersja utworzonej bazy SQLite3: ' + sqlite3.version)
+
+    def query(self, query, parameters=()):
+        try:
+            result = self._db_cursor.execute(query, parameters)
+        except Exception as error:
+            print(f'Error executing query"{query}", error: {error}')
+        else:
+            return result
+
+    def table_in_db(self, name):
+        table_names = self.query(
+            "SELECT name FROM sqlite_master WHERE type='table';")
+        table_names = [x[0] for x in table_names.fetchall()]
+        return name in table_names
+
+    def __del__(self):
+        self._db_connection.close()
 
 
-# funkcja stworz tabele
-def stworz_tabele(conn, create_table_sql):
-    """ create a table from the create_table_sql statement
-    :param conn: Connection object
-    :param create_table_sql: a CREATE TABLE statement
-    :return:
-    """
-    try:
-        c = conn.cursor()
-        c.execute(create_table_sql)
-    except Error as e:
-        print(e)
+def automatic_update():
+    # pobierz najnowsze dane z bossa
+    link = "https://info.bossa.pl/pub/ciagle/mstock/sesjacgl/sesjacgl.prn"
+    f = urlopen(link)
+    stock_data = f.read().decode("utf-8")
+    date = stock_data.split('\r\n')[0].split(',')[1]
+    print(f"BOS SA dane z {date}")
 
-def dodaj_dane_bd(conn,dane):
-    """
-    Create a new project into the projects table
-    :param conn:
-    :param project:
-    :return: project id
-    """
-    sql = f'''INSERT INTO dane{data}(nazwa, data, otwarcie, max, min, tko, wolumen)
-            VALUES (?,?,?,?,?,?,?)'''
-    c = conn.cursor()
-    c.execute(sql, dane)
-    return c.lastrowid
+    db = MySqliteDb()
+    table_names = db.query(
+        "SELECT name FROM sqlite_master WHERE type='table';")
+    table_names = [x[0] for x in table_names.fetchall()]
 
-def sprawdz_czy_pusta_tabela(conn):
-    sql = f'''SELECT count(*) FROM (SELECT 0 FROM dane{data});'''
-    c = conn.cursor()
-    c.execute(sql)
-    return True if c.fetchone()[0] == 0 else False
+    if not db.table_in_db(f'day{date}'):
+        print(f'Uaktualniam baze o dane z dnia: {date}!!!')
+        sql_create_table_day_data = ("CREATE TABLE IF NOT EXISTS day" + date +
+                                     "(id integer PRIMARY KEY, nazwa TEXT, "
+                                     "data INTEGER, otwarcie REAL, max REAL, "
+                                     "min REAL, tko REAL, wolumen INTEGER);")
+        db.query(sql_create_table_day_data)
+        current_data = [(x.split(',')) for x in stock_data.split('\r\n')]
+        for row in current_data:
+            if len(row) == 7:
+                db.query(
+                    f'''INSERT INTO day{date} (nazwa, data, otwarcie, max, min,
+                        tko, wolumen) VALUES (?,?,?,?,?,?,?)''', row)
+        db._db_connection.commit()
+    else:
+        print(f'Baza zawiera najnowsze dane z dnia: {date}')
+    return db
 
 
-# pobierz najnowsze dane z bossa
-link = "https://info.bossa.pl/pub/ciagle/mstock/sesjacgl/sesjacgl.prn"
-f = urlopen(link)
-daneGielda = f.read().decode("utf-8")
-
-# utworz plik DB (jesli nie ma) lub polaczenie (jesli jest plik)
-baza = polacz_bd(str(Path().absolute()) + r"\DB\pyGieldaDB.db")
+def data_prn_file():
+    folder_path = str(Path().absolute()) + '\\DB\\'
+    files = []
+    for r,d,f in os.walk(folder_path):
+        for file in f:
+            if '.prn' in file:
+                files.append(os.path.join(r,file))
+    return files
 
 # glowna petla
+database = automatic_update()
 while True:
-    data = str(daneGielda.split('\r\n')[0].split(',')[1])
-    wybor = input(
-        '================\n' + '1 zarzadzaj BD\n2 obecna sciezka\n3 daneGielda\n0 wyjscie\n' + '================\n')
-    if wybor == '1':
-        wybor2 = input(f'1 stworz tabele DB\n2 Zapisz dane z {data}\n0 powrot\n')
+    choice = input('================\n' + '1 obecna sciezka\n0 wyjscie\n' +
+                   '================\n')
 
-        if wybor2 == '1':
-            sql_stworz_tabele_dzien = ("CREATE TABLE IF NOT EXISTS dane" + data + \
-                                       "(id integer PRIMARY KEY, nazwa TEXT, "
-                                       "data INTEGER, otwarcie REAL, max REAL, "
-                                       "min REAL, tko REAL, wolumen INTEGER);")
-            print(sql_stworz_tabele_dzien)
-            if baza is not None:
-                stworz_tabele(baza, sql_stworz_tabele_dzien)
-            else:
-                print("Error! cannot create the database connection.")
-
-        if wybor2 == '2':
-            with baza:
-                if sprawdz_czy_pusta_tabela(baza):
-                    for notowanie in  daneGielda.split('\r\n'):
-                        if len(notowanie) > 0:
-                            dodaj_dane_bd(baza,notowanie.split(','))
-
-        if wybor2 == '0':
-            continue
-
-    if wybor == '2':
+    if choice == '1':
         print('Sciezka: ' + str(Path().absolute()))
+    if choice == '2':
+        plt.plot([1, 2, 3, 4])
+        plt.ylabel('some numbers')
+        plt.show()
+    if choice == '3':
+        data_files = data_prn_file()
+        print(data_files)
+        file_choice = input(f'Wybierz nr pliku [0-{len(data_files)-1}]: ')
+        if int(file_choice) > len(data_files)-1 or int(file_choice) < 0:
+            print('Zly numer pliku')
+            continue
+        with open(data_files[int(file_choice)]) as f:
+            data = f.read().split('\n')
+            date = data[0].split(',')[1]
+            print(f'day{date}')
+            # if not database.table_in_db(f'day{date}'):
+            #     for row in [x.split(',') for x in data]:
+            #         if len(row) == 7:
+            #             database.query(
+            #                 f'''INSERT INTO day{date} (nazwa, data, otwarcie,
+            #                 max, min, tko, wolumen) VALUES (?,?,?,?,?,?,?)''',
+            #                 row)
+            #     database._db_connection.commit()
+            # else:
+            #     print(f'Baza zawiera dane (z pliku) z dnia: {date}')
 
-    if wybor == '3':
-        print(daneGielda)
-
-    if wybor == '0':
+    if choice == '0':
         break
-
-if baza:
-    baza.close()
