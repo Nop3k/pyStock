@@ -31,7 +31,18 @@ class MySqliteDb:
         table_names = self.query(
             "SELECT name FROM sqlite_master WHERE type='table';")
         table_names = [x[0] for x in table_names.fetchall()]
+        print(f"Szukana tabela: {name}, Lista tabel: {table_names}")
         return name in table_names
+
+    def create_day_data_table(self, date):
+        sql_create_table_day_data = ("CREATE TABLE IF NOT EXISTS day" + date +
+                                     "(id integer PRIMARY KEY, nazwa TEXT, "
+                                     "data INTEGER, otwarcie REAL, max REAL, "
+                                     "min REAL, tko REAL, wolumen INTEGER);")
+        self.query(sql_create_table_day_data)
+
+    def get_company_all_data(self, company):
+        self.query("SELECT * FROM tasks WHERE priority=?", (priority,))
 
     def __del__(self):
         self._db_connection.close()
@@ -46,17 +57,9 @@ def automatic_update():
     print(f"BOS SA dane z {date}")
 
     db = MySqliteDb()
-    table_names = db.query(
-        "SELECT name FROM sqlite_master WHERE type='table';")
-    table_names = [x[0] for x in table_names.fetchall()]
-
     if not db.table_in_db(f'day{date}'):
         print(f'Uaktualniam baze o dane z dnia: {date}!!!')
-        sql_create_table_day_data = ("CREATE TABLE IF NOT EXISTS day" + date +
-                                     "(id integer PRIMARY KEY, nazwa TEXT, "
-                                     "data INTEGER, otwarcie REAL, max REAL, "
-                                     "min REAL, tko REAL, wolumen INTEGER);")
-        db.query(sql_create_table_day_data)
+        db.create_day_data_table(date)
         current_data = [(x.split(',')) for x in stock_data.split('\r\n')]
         for row in current_data:
             if len(row) == 7:
@@ -72,17 +75,19 @@ def automatic_update():
 def data_prn_file():
     folder_path = str(Path().absolute()) + '\\DB\\'
     files = []
-    for r,d,f in os.walk(folder_path):
+    for r, d, f in os.walk(folder_path):
         for file in f:
             if '.prn' in file:
-                files.append(os.path.join(r,file))
+                files.append(os.path.join(r, file))
     return files
+
 
 # glowna petla
 database = automatic_update()
 while True:
-    choice = input('================\n' + '1 obecna sciezka\n0 wyjscie\n' +
-                   '================\n')
+    choice = input(
+        '================\n' + '1 obecna sciezka\n2 plot[test]\n3 dane z pliku\n0 wyjscie\n' +
+        '================\n')
 
     if choice == '1':
         print('Sciezka: ' + str(Path().absolute()))
@@ -93,24 +98,26 @@ while True:
     if choice == '3':
         data_files = data_prn_file()
         print(data_files)
-        file_choice = input(f'Wybierz nr pliku [0-{len(data_files)-1}]: ')
-        if int(file_choice) > len(data_files)-1 or int(file_choice) < 0:
+        file_choice = input(f'Wybierz nr pliku [0-{len(data_files) - 1}]: ')
+        if int(file_choice) > len(data_files) - 1 or int(file_choice) < 0:
             print('Zly numer pliku')
             continue
         with open(data_files[int(file_choice)]) as f:
             data = f.read().split('\n')
             date = data[0].split(',')[1]
-            print(f'day{date}')
-            # if not database.table_in_db(f'day{date}'):
-            #     for row in [x.split(',') for x in data]:
-            #         if len(row) == 7:
-            #             database.query(
-            #                 f'''INSERT INTO day{date} (nazwa, data, otwarcie,
-            #                 max, min, tko, wolumen) VALUES (?,?,?,?,?,?,?)''',
-            #                 row)
-            #     database._db_connection.commit()
-            # else:
-            #     print(f'Baza zawiera dane (z pliku) z dnia: {date}')
+            print(f'{date}')
+            if not database.table_in_db(f'day{date}'):
+                print(f'Tworze tabele day{date}')
+                database.create_day_data_table(date)
+                for row in [x.split(',') for x in data]:
+                    if len(row) == 7:
+                        database.query(
+                            f'''INSERT INTO day{date} (nazwa, data, otwarcie,
+                            max, min, tko, wolumen) VALUES (?,?,?,?,?,?,?)''',
+                            row)
+                database._db_connection.commit()
+            else:
+                print(f'Baza zawiera dane z dnia: {date}')
 
     if choice == '0':
         break
