@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import pymongo
 import pprint
+import pandas as pd
 
 
 def automatic_update():
@@ -30,16 +31,6 @@ def automatic_update():
     stock_data_documented = [{key: value for key, value in zip(keys, l)} for l
                              in stock_data_listed]
     return int(date), stock_data_documented
-
-
-def data_prn_file():
-    folder_path = str(Path().absolute()) + '\\DB\\'
-    files = []
-    for r, d, f in os.walk(folder_path):
-        for file in f:
-            if '.prn' in file:
-                files.append(os.path.join(r, file))
-    return files
 
 
 # glowna petla
@@ -95,9 +86,26 @@ if __name__ == '__main__':
                     f"Dodano {len(result.inserted_ids)} notowan z dnia {date}")
 
         if choice == '2':
-            plt.plot([1, 2, 3, 4])
-            plt.ylabel('some numbers')
+            result_data_frame = pd.DataFrame(
+                collection.find({'nazwa': 'CDPROJEKT'}))
+            result_data_frame['data'] = pd.to_datetime(
+                result_data_frame['data'].astype(int), format='%Y%m%d')
+            result_data_frame.sort_values(by=['data'], inplace=True)
+            print(result_data_frame)
+
+            fig, ax1 = plt.subplots()
+            ax1.plot(result_data_frame['data'], result_data_frame['otwarcie'])
+            ax1.set_xlabel('Data')
+            ax1.set_ylabel('PLN')
+            ax1.autoscale()
+
+            ax2 = ax1.twinx()
+            result_data_frame.plot(kind='bar', x='data', y='wolumen', ax=ax2)
+            ax2.set_ylabel('Il. transakcji')
+            ax2.autoscale()
+
             plt.show()
+
         if choice == '3':
             date, data = automatic_update()
             if collection.find_one({"data": date}):
