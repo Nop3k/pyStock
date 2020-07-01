@@ -88,7 +88,8 @@ if __name__ == '__main__':
                 else:
                     result = collection.insert_many(file_data_documented)
                     print(
-                        f"Dodano {len(result.inserted_ids)} notowan z dnia {date}")
+                        f"Dodano {len(result.inserted_ids)} notowan"
+                        f"z dnia {date}")
 
         if choice == '2':
             # TODO: funkcja pobierająca dane z bazy
@@ -136,7 +137,8 @@ if __name__ == '__main__':
                 ax1.set_ylabel('Il. transakcji', fontsize=10)
                 ax1.set_xlabel('Data', fontsize=10)
                 ax1.tick_params(axis='x', labelsize=8)
-                ax1.legend(loc="upper left", labels=['wolumen'], fontsize=6)
+                ax1.legend(loc="upper left", labels=['wolumen'],
+                           fontsize=6)
 
                 # skopiuj dane z wykresu 1 i przygotuj wykres data/otwarcie
                 ax2 = ax1.twinx()
@@ -144,7 +146,8 @@ if __name__ == '__main__':
                          result_data_frame['otwarcie'],
                          '-o')
                 ax2.set_ylabel('PLN', fontsize=10)
-                ax2.legend(loc="upper right", labels=['otwarcie'], fontsize=6)
+                ax2.legend(loc="upper right", labels=['otwarcie'],
+                           fontsize=6)
 
                 # wyświetl wykres
                 plt.show()
