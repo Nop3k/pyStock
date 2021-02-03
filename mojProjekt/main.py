@@ -1,19 +1,19 @@
 import os
-from pathlib import Path
 from urllib.request import urlopen
 from difflib import get_close_matches
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import pymongo
-import pprint
 import datetime
 
+# nagłówki tabeli
 keys = ['nazwa', 'data', 'otwarcie', 'max', 'min', 'tko', 'wolumen']
+# formatowanie liczb wyświetlanych przez pandas
+pd.set_option("display.float_format", '{:,.2f}'.format)
 
-
+# funkcja pobiera najnowsze dane z bossa
 def automatic_update():
-    # pobierz najnowsze dane z bossa
     link = "https://info.bossa.pl/pub/ciagle/mstock/sesjacgl/sesjacgl.prn"
     try:
         response = urlopen(link)
@@ -27,7 +27,7 @@ def automatic_update():
     else:
         stock_data = response.read().decode("utf-8")
 
-        # przetwórz dane z bossa
+        # przetwórz dane z bossa - utwórz listę i rzutuj zmienne
         stock_data_listed = [x.split(',') for x in stock_data.split('\r\n')]
         stock_data_listed.pop()
         for stock in stock_data_listed:
@@ -37,6 +37,8 @@ def automatic_update():
             stock[4] = float(stock[4])
             stock[5] = float(stock[5])
             stock[6] = float(stock[6])
+
+        # dzień z którego pobrało dane
         date = stock_data_listed[0][1]
         print(f"BOS SA dane z {date}")
 
@@ -54,22 +56,24 @@ if __name__ == '__main__':
     my_client = pymongo.MongoClient("mongodb://localhost:27017/")
     my_db = my_client["myDatabase"]
     collection = my_db["notowania"]
-    while True:
-        menu = input(
-            '================\n1 update z .prn\n2 update z neta\n3 plot\n' +
-            '0 wyjscie\n================\n')
 
+    # pokaż menu
+    while True:
+        # menu = input(
+        #     '================\n1 update z .prn\n2 update z neta\n3 plot\n' +
+        #     '0 wyjscie\n================\n')
+        menu = "3"
         if menu == '1':
-            # Pokaz gdzie jestem
-            print('Sciezka: ' + str(Path().absolute()))
 
             # Lista plikow .prn
+            data_path = os.path.join(os.getcwd(), 'notowania')
+            print('Sciezka dla plików: ' + data_path)
             file_list = [file for file in
-                         os.listdir(Path().absolute()) if
+                         os.listdir(data_path) if
                          file.endswith('.prn')]
             for idx in range(len(file_list)):
                 # utwórz ścieżkę do kolejnych plików prn w folderze
-                file_path = f'{Path().absolute()}\\{file_list[idx]}'
+                file_path = f'{data_path}\\{file_list[idx]}'
 
                 # Przetworz plik .prn odpowiednie stringi do intów/floatów
                 # kolejno 0='nazwa', 1='data', 2='otwarcie', 3='max', 4='min',
@@ -118,10 +122,10 @@ if __name__ == '__main__':
         if menu == '3':
             # TODO: funkcja pobierająca dane z bazy
             # wybierz spółkę
-            company = input('Wybierz spółkę do wyświetlenia\n').upper()
+            #company = input('Wybierz spółkę do wyświetlenia\n').upper()
+            company = "CDPROJEKT"
+            # pomóż wybrać spółkę po nazwie - wyszukiwarka
             query = {}
-
-            # pomóż wybrać spółkę po nazwie
             unique_companies = collection.distinct('nazwa')
             inquiry = get_close_matches(company, unique_companies)
             if not inquiry:
@@ -133,9 +137,12 @@ if __name__ == '__main__':
             else:
                 query['nazwa'] = company
 
+            # wybierz zakres danych do pokazania
             today = datetime.date.today()
-            choice = input(
-                'Wybierz okres:\n1 ostatnie 7 dni\n2 ostatnie 30 dni\n3 wlasny\n0 wszystko\n')
+            #choice = input('Wybierz okres:\n1 ostatnie 7 dni\n' +
+            #               '2 ostatnie 30 dni\n3 ostatnie 90 dni' +
+            #               '\n4 wlasny\n0 wszystko\n')
+            choice = "1"
             if choice == '1':
                 week_ago = (today - datetime.timedelta(days=8)).strftime(
                     '%Y%m%d')
@@ -145,6 +152,10 @@ if __name__ == '__main__':
                     '%Y%m%d')
                 query['data'] = {'$gte': int(month_ago)}
             if choice == '3':
+                three_month_ago = (today - datetime.timedelta(days=91)).strftime(
+                    '%Y%m%d')
+                query['data'] = {'$gte': int(three_month_ago)}
+            if choice == '4':
                 # TODO: własny okres notowań
                 continue
             print(query)
@@ -170,13 +181,12 @@ if __name__ == '__main__':
                 fig, ax1 = plt.subplots()
                 plt.xticks(rotation=45)
                 plt.autoscale()
-                plt.tight_layout(4)
                 plt.title(query['nazwa'])
 
                 # przygotuj wykres data/wolumen
                 ax1.bar(result_data_frame['data'],
                         result_data_frame['wolumen'],
-                        color='c')
+                        color='b')
                 ax1.set_ylabel('Il. transakcji', fontsize=10)
                 ax1.set_xlabel('Data', fontsize=10)
                 ax1.tick_params(axis='x', labelsize=8)
@@ -186,8 +196,11 @@ if __name__ == '__main__':
                 # skopiuj dane z wykresu 1 i przygotuj wykres data/otwarcie
                 ax2 = ax1.twinx()
                 ax2.plot(result_data_frame['data'],
-                         result_data_frame['otwarcie'],
-                         '-o')
+                         result_data_frame['otwarcie'], '-oc',
+                         result_data_frame['data'],
+                         result_data_frame['max'], '^g',
+                         result_data_frame['data'],
+                         result_data_frame['min'], 'vr')
                 ax2.set_ylabel('PLN', fontsize=10)
                 ax2.legend(loc="upper right", labels=['otwarcie'],
                            fontsize=6)
@@ -195,10 +208,17 @@ if __name__ == '__main__':
                 # wyświetl wykres
                 plt.show()
 
+                # statystyka
+                df = result_data_frame[['data','otwarcie','max','min','tko','wolumen']]
+                df = df.set_index('data')
+                print(df.agg(['mean','median','mad','max']))
         if menu == '4':
             # TODO: funkcja scrapująca dane 'realtime' i rysująca
             pass
 
-        # TODO: funkcja porówniania dwóch spółek?
+        if menu == '5':
+            # TODO: funkcja porówniania dwóch spółek?
+            pass
+
         if menu == '0':
             break
