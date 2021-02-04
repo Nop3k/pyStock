@@ -12,6 +12,7 @@ keys = ['nazwa', 'data', 'otwarcie', 'max', 'min', 'tko', 'wolumen']
 # formatowanie liczb wyświetlanych przez pandas
 pd.set_option("display.float_format", '{:,.2f}'.format)
 
+
 # funkcja pobiera najnowsze dane z bossa
 def automatic_update():
     link = "https://info.bossa.pl/pub/ciagle/mstock/sesjacgl/sesjacgl.prn"
@@ -59,10 +60,10 @@ if __name__ == '__main__':
 
     # pokaż menu
     while True:
-        # menu = input(
-        #     '================\n1 update z .prn\n2 update z neta\n3 plot\n' +
-        #     '0 wyjscie\n================\n')
-        menu = "3"
+        menu = input(
+            '================\n1 update z .prn\n2 update z neta\n3 plot\n' +
+            '0 wyjscie\n================\n')
+        # menu = "3"
         if menu == '1':
 
             # Lista plikow .prn
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                     result = collection.insert_many(file_data_documented)
                     print(
                         f"Dodano {len(result.inserted_ids)} notowan"
-                        f"z dnia {date}")
+                        f" z dnia {date}")
 
         if menu == '2':
             # pobierz dane ze strony WWW
@@ -122,7 +123,7 @@ if __name__ == '__main__':
         if menu == '3':
             # TODO: funkcja pobierająca dane z bazy
             # wybierz spółkę
-            #company = input('Wybierz spółkę do wyświetlenia\n').upper()
+            # company = input('Wybierz spółkę do wyświetlenia\n').upper()
             company = "CDPROJEKT"
             # pomóż wybrać spółkę po nazwie - wyszukiwarka
             query = {}
@@ -139,10 +140,9 @@ if __name__ == '__main__':
 
             # wybierz zakres danych do pokazania
             today = datetime.date.today()
-            #choice = input('Wybierz okres:\n1 ostatnie 7 dni\n' +
-            #               '2 ostatnie 30 dni\n3 ostatnie 90 dni' +
-            #               '\n4 wlasny\n0 wszystko\n')
-            choice = "1"
+            choice = input('Wybierz okres:\n1 ostatnie 7 dni\n' +
+                           '2 ostatnie 30 dni\n3 ostatnie 90 dni' +
+                           '\n4 wlasny\n0 wszystko\n')
             if choice == '1':
                 week_ago = (today - datetime.timedelta(days=8)).strftime(
                     '%Y%m%d')
@@ -152,7 +152,8 @@ if __name__ == '__main__':
                     '%Y%m%d')
                 query['data'] = {'$gte': int(month_ago)}
             if choice == '3':
-                three_month_ago = (today - datetime.timedelta(days=91)).strftime(
+                three_month_ago = (
+                        today - datetime.timedelta(days=91)).strftime(
                     '%Y%m%d')
                 query['data'] = {'$gte': int(three_month_ago)}
             if choice == '4':
@@ -174,7 +175,6 @@ if __name__ == '__main__':
 
                 # uporządkuj wyniki zgodnie z datą
                 result_data_frame.sort_values(by=['data'], inplace=True)
-                print(result_data_frame)
 
                 # TODO: funkcja rysująca wykresy
                 # przygotuj okno z wykresami
@@ -204,14 +204,29 @@ if __name__ == '__main__':
                 ax2.set_ylabel('PLN', fontsize=10)
                 ax2.legend(loc="upper right", labels=['otwarcie'],
                            fontsize=6)
+                # statystyka
+                df = result_data_frame[
+                    ['data', 'otwarcie', 'max', 'min', 'tko', 'wolumen']]
+                # zachowaj najnowsze notowanie
+                newest = df[df['data'] == df['data'].max()].set_index('data')
+                # pomiń najnowsze notowanie
+                df = df[df['data'] != df['data'].max()].set_index('data')
+                # pokaż statystyki
+                statistics = df.agg(['mean', 'median', 'mad', 'min', 'max'])
+                # porównaj najnowsze dane
+                comparison = newest.append(
+                    newest.div(
+                        statistics[statistics.index == "mean"].values) * 100)
+                print(statistics)
+                print(
+                    "\nPierwszy wiersz:ostatni kurs\n" +
+                    "Drugi wiersz:jaki % średnich wartości danego okresu" +
+                    " stanowi nowy kurs")
+                print(comparison)
 
                 # wyświetl wykres
                 plt.show()
 
-                # statystyka
-                df = result_data_frame[['data','otwarcie','max','min','tko','wolumen']]
-                df = df.set_index('data')
-                print(df.agg(['mean','median','mad','max']))
         if menu == '4':
             # TODO: funkcja scrapująca dane 'realtime' i rysująca
             pass
@@ -222,3 +237,4 @@ if __name__ == '__main__':
 
         if menu == '0':
             break
+        break
