@@ -45,9 +45,7 @@ def automatic_update():
 
         # przygotuj dokumenty
         stock_data_documented = [{key: value for key, value in zip(keys, row)}
-                                 for
-                                 row
-                                 in stock_data_listed]
+                                 for row in stock_data_listed]
         return int(date), stock_data_documented
 
 
@@ -61,9 +59,10 @@ if __name__ == '__main__':
     # pokaż menu
     while True:
         menu = input(
-            '================\n1 update z .prn\n2 update z neta\n3 plot\n' +
-            '0 wyjscie\n================\n')
-        # menu = "3"
+            '================\n1 Dodaj notowania z pliku .prn' +
+            '\n2 Pobierz najnowsze notowania z BOSSA.pl' +
+            '\n3 Wykres dla spółki\n' +
+            '0 Wyjscie\n================\n')
         if menu == '1':
 
             # Lista plikow .prn
@@ -123,8 +122,7 @@ if __name__ == '__main__':
         if menu == '3':
             # TODO: funkcja pobierająca dane z bazy
             # wybierz spółkę
-            # company = input('Wybierz spółkę do wyświetlenia\n').upper()
-            company = "CDPROJEKT"
+            company = input('Wybierz spółkę do wyświetlenia\n').upper()
             # pomóż wybrać spółkę po nazwie - wyszukiwarka
             query = {}
             unique_companies = collection.distinct('nazwa')
@@ -142,7 +140,7 @@ if __name__ == '__main__':
             today = datetime.date.today()
             choice = input('Wybierz okres:\n1 ostatnie 7 dni\n' +
                            '2 ostatnie 30 dni\n3 ostatnie 90 dni' +
-                           '\n4 wlasny\n0 wszystko\n')
+                           '\n0 wszystko\n')
             if choice == '1':
                 week_ago = (today - datetime.timedelta(days=8)).strftime(
                     '%Y%m%d')
@@ -221,7 +219,7 @@ if __name__ == '__main__':
                 print(
                     "\nPierwszy wiersz:ostatni kurs\n" +
                     "Drugi wiersz:jaki % średnich wartości danego okresu" +
-                    " stanowi nowy kurs")
+                    " stanowi nowy-ostatni dodany kurs")
                 print(comparison)
 
                 # wyświetl wykres
@@ -237,4 +235,3 @@ if __name__ == '__main__':
 
         if menu == '0':
             break
-        break
