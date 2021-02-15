@@ -12,7 +12,7 @@ This option will add all the new data included in all the files from the folder 
 
 2 - Connects automatically to BOSSA.pl and if online data is new adds to collection.
 
-3 - Here you can show the gathered data. After selecting this option you have to choose the company or index to check - by typing it's name.
+3 - Here you can show the gathered data. After selecting this option you have to choose the company or index to check - by typing it's name (e.g. WIG).
 Don't worry it will help you choose the name if you didn't type it wrong - it will show the closest result. 
 Just choose one from list (by typing 0 ... etc and enter again).
 
